@@ -15,66 +15,70 @@ datasource db {
 }
 
 model User {
-  id String @id @default(cuid())
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Authentication fields
+  username String @unique
+  email    String @unique
+  password String
 
-username String @unique
-email String @unique
-password String 
-
-//profile
-
-displayName String 
-bio String? @db.VarChar(160)
-profilePicture String?
-location String?
-website String?
-
-// Developer-specific fields
+  // Profile information
+  displayName    String
+  bio            String?  @db.VarChar(160)
+  profilePicture String?
+  location       String?
+  website        String?
+  
+  // Developer-specific fields
   skills String[] // PostgreSQL array for skills
 
+  // Account status
+  isVerified Boolean @default(false)
+  isPrivate  Boolean @default(false)
+  lastActive DateTime @default(now())
 
-//Relationships
-posts Post[]
-comments Comment[]
-likes Like[]
-
-// Following relationships (self-referential many-to-many)
+  // Relationships
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+  
+  // Following relationships (self-referential many-to-many)
   followers Follow[] @relation("UserFollowers")
   following Follow[] @relation("UserFollowing")
+  
+  // Notifications
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationRecipient")
 
-
-//Notifications 
-sendNotifications Notification[] @relation("NotificationSender")
-recievedNotifications Notification[] @relation("NotificatoinRecipient")
-
-@@map("users")
+  @@map("users")
 }
 
-model Post{
-      id        String   @id @default(cuid())
-      createdAt DateTime @default(now())
-      updatedAt DateTime @updatedAt
+model Post {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-      //Content fields
-      content String @db.Text
-      images Json? //storing images and metadata in Json
-      tags String[]
+  // Content fields
+  content String @db.Text
+  images  Json?  // Store image URLs and metadata as JSON
+  tags    String[]
 
-      codeSnippet Json?
+  // Developer-specific features
+  codeSnippet Json? // Store code and language as JSON
 
-      authorId String
-      author User @relation(fields: [authorId], reference: [id], onDelete:Cascade)
+  // Relationships
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-      comments Comment[]
-      likes Like[]
+  comments Comment[]
+  likes    Like[]
 
-      //Indexes for performance 
-      @@index([authorId])
-      @@index([createdAt])
-      @@map("posts")
+  // Indexes for performance
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("posts")
 }
 
 model Comment {
@@ -102,20 +106,21 @@ model Comment {
 }
 
 model Like {
-  id String @id @default(cuid())
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  //Relationships
+  // Relationships
   userId String
-  user User @relation(fields:[userId],references:[id], onDelete:Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  postId String 
-   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   // Prevent duplicate likes
   @@unique([userId, postId])
   @@map("likes")
 }
+
 model Follow {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
@@ -130,6 +135,25 @@ model Follow {
   // Prevent duplicate follows
   @@unique([followerId, followingId])
   @@map("follows")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  type    NotificationType
+  message String
+  isRead  Boolean          @default(false)
+
+  // Relationships
+  recipientId String
+  recipient   User   @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation("NotificationSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, createdAt])
+  @@map("notifications")
 }
 
 enum NotificationType {
