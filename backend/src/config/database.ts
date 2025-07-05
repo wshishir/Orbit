@@ -1,25 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+import mongoose from "mongoose"
 
-declare global{
-    var db :PrismaClient;
-}
-
-let prisma:PrismaClient;
-
-if(process.env.NODE_ENV==='production'){
-    prisma=new PrismaClient();
-}else {
-    if(!global.db){
-        global.db= new PrismaClient({
-            log:['query','error','warn'], //enable logging in development
-        });
+const connectDB = async () => {
+  try {
+    const URI = process.env.MONGO_URI
+    if (!URI) {
+      throw new Error("MONGO_URI environment variable is not defined")
     }
-    prisma = global.db;
+    await mongoose.connect(URI)
+    console.log("MongoDB Connected!")
+  } catch (error) {
+    console.log("MongoDB Error: ", error)
+    process.exit(1)
+  }
 }
 
-//graveful shutdown 
-process.on('beforeExit', async ()=> {
-    await prisma.$disconnect();
-});
-
-export { prisma };
+export default connectDB
